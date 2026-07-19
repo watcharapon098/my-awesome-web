@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Refrigerator IoT Dashboard Simulator</title>
+    <!-- Tailwind CSS สำหรับการจัดหน้าจอที่สวยงามและรองรับมือถือ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js สำหรับวาดกราฟเรียลไทม์ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons สำหรับไอคอนประดับระบบ -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- สคริปต์สำหรับแสดงผลโมเดล 3D จาก Google -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen pb-12">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-750 p-4 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i data-lucide="snowflake" class="text-cyan-400 w-8 h-8 animate-pulse"></i>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-wide">SMART FRIDGE IoT</h1>
+                    <p class="text-xs text-slate-400">Digital Twin & Asset Tracker Simulator</p>
+                </div>
+            </div>
+            
+            <!-- [NEW] ตัวเลข Impact สด (Counter) -->
+            <div class="flex items-center gap-4 bg-slate-850 p-2 rounded-xl border border-slate-700 text-xs text-slate-300 font-mono shadow-inner">
+                <div>🛡️ ป้องกันความเสียหาย: <span class="text-emerald-400 font-bold text-sm">24 ครั้ง</span></div>
+                <div class="border-l border-slate-700 h-6"></div>
+                <div>💰 ประหยัดงบได้: <span class="text-cyan-400 font-bold text-sm">48,000 บาท</span></div>
+                <div class="border-l border-slate-700 h-6"></div>
+                <div>❌ อุณหภูมิหลุดเกณฑ์: <span class="text-rose-500 font-bold text-sm">0 ครั้ง</span></div>
+            </div>
+
+            <!-- สถานะจำลองระบบ -->
+            <div class="flex items-center gap-4 text-sm">
+                <div class="flex items-center gap-2 bg-slate-850 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span id="ping-effect" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="net-status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span id="net-status-text" class="font-medium text-emerald-400">Network: Online</span>
+                </div>
+                <button onclick="toggleNetwork()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs transition active:scale-95">
+                    จำลองเน็ตหลุด
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+        
+        <!-- ฝั่งซ้าย: คอนโทรลเลอร์จำลองสถานการณ์ + [NEW] กล่อง 3D Model -->
+        <div class="lg:col-span-1 space-y-6">
+            
+            <!-- [NEW] ปุ่มเล่นสถานการณ์อัตโนมัติ (Demo Mode) -->
+            <div class="bg-gradient-to-r from-cyan-900/40 to-slate-800 p-4 rounded-2xl border border-cyan-500/30 shadow-xl">
+                <button onclick="startAutoPlay()" id="btn-autoplay" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-cyan-600/20">
+                    <i data-lucide="play" class="w-5 h-5 fill-white"></i>
+                    <span>▶️ กดปุ่มเดียว: เล่นสถานการณ์อัตโนมัติ (Demo 40 วินาที)</span>
+                </button>
+                <div id="autoplay-status" class="hidden text-xs text-center text-cyan-400 font-mono mt-2 animate-pulse">
+                    กำลังดำเนินเนื้อเรื่อง: สเต็ปที่ 1/6 (รับของเข้าระบบ)
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i data-lucide="sliders" class="text-cyan-400 w-5 h-5"></i>
+                    ห้องควบคุมสถานการณ์
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">กดเลือกสถานการณ์หรือโหมดอุณหภูมิสินค้าเพื่อแสดงการตอบสนองต่อหน้าคณะกรรมการ</p>
+                
+                <!-- [NEW] ปุ่มเลือกโหมดประเภทสินค้า -->
+                <div class="mb-4 p-3 bg-slate-850 rounded-xl border border-slate-750">
+                    <label class="text-xs font-bold text-cyan-400 uppercase tracking-wider block mb-2">📋 ประเภทสินค้าคงคลัง</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setProductMode('vaccine')" id="btn-mode-vaccine" class="py-2 px-3 text-xs font-bold rounded-lg border border-cyan-500 bg-cyan-500/10 text-cyan-300 transition">
+                            💉 วัคซีน/ยาเย็น (2-8°C)
+                        </button>
+                        <button onclick="setProductMode('medicine')" id="btn-mode-medicine" class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-400 transition hover:border-slate-500">
+                            💊 ยาทั่วไป (25°C ±2)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <button onclick="setScenario('normal')" id="btn-scen-normal" class="w-full text-left bg-emerald-600/20 border border-emerald-500 p-3 rounded-xl transition flex items-center justify-between group active:scale-[0.98]">
+                        <div>
+                            <div id="txt-scen-normal-title" class="font-bold text-emerald-400">1. สภาวะปกติ (2-8°C)</div>
+                            <div id="txt-scen-normal-desc" class="text-xs text-slate-300">ควบคุมความเย็นเสถียร ของปลอดภัย</div>
+                        </div>
+                        <i data-lucide="check-circle" class="text-emerald-400 group-hover:translate-x-1 transition"></i>
+                    </button>
+
+                    <button onclick="setScenario('warning')" id="btn-scen-warning" class="w-full text-left bg-slate-850 border border-slate-700 hover:border-amber-500 p-3 rounded-xl transition flex items-center justify-between group active:scale-[0.98]">
+                        <div>
+                            <div class="font-bold text-slate-300 group-hover:text-amber-400">2. Early-Warning</div>
+                            <div class="text-xs text-slate-400">เตือนก่อนหลุดเกณฑ์ ป้องกันสินค้าเสียหาย</div>
+                        </div>
+                        <i data-lucide="alert-triangle" class="text-slate-500 group-hover:text-amber-400 transition"></i>
+                    </button>
+
+                    <button onclick="setScenario('critical')" id="btn-scen-critical" class="w-full text-left bg-slate-850 border border-slate-700 hover:border-rose-500 p-3 rounded-xl transition flex items-center justify-between group active:scale-[0.98]">
+                        <div>
+                            <div class="font-bold text-slate-300 group-hover:text-rose-400">3. วิกฤตคอมเพรสเซอร์พัง</div>
+                            <div class="text-xs text-slate-400">ระบบไฟขัดข้อง อุณหภูมิพุ่งสูงฉับพลัน</div>
+                        </div>
+                        <i data-lucide="zap" class="text-slate-500 group-hover:text-rose-400 transition"></i>
+                    </button>
+                </div>
+
+                <!-- ระบบความปลอดภัย Geofence & QR Lock -->
+                <div class="mt-6 pt-6 border-t border-slate-700 space-y-4">
+                    <h3 class="text-sm font-semibold text-slate-300">ระบบความปลอดภัยทางกายภาพ</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="simulateQRUnlock()" id="btn-qr-lock" class="bg-slate-700 hover:bg-slate-600 p-2.5 rounded-xl text-xs flex flex-col items-center gap-1.5 transition active:scale-95">
+                            <i data-lucide="qr-code" class="w-4 h-4 text-cyan-400"></i>
+                            <span id="qr-text">สแกน QR ปลดล็อกตู้</span>
+                        </button>
+                        <button onclick="toggleGeofence()" id="btn-geofence" class="bg-slate-700 hover:bg-slate-600 p-2.5 rounded-xl text-xs flex flex-col items-center gap-1.5 transition active:scale-95">
+                            <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i>
+                            <span id="geo-text">เปิดระบบ Geofencing</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กล่องแสดงผลหน้าจอดิจิตอล (เรียลไทม์) -->
+            <div id="status-card" class="bg-gradient-to-br from-slate-800 to-slate-850 p-6 rounded-2xl border border-slate-700 shadow-xl transition-all duration-300 text-center">
+                <span class="text-xs uppercase font-bold tracking-widest text-slate-400">Current Temperature</span>
+                <div id="temp-display" class="text-5xl font-extrabold my-2 text-emerald-400 transition-colors duration-300">4.5°C</div>
+                <div id="status-badge" class="inline-block bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold">
+                    SYSTEM STATUS: NORMAL
+                </div>
+            </div>
+
+            <!-- [NEW] กล่องแสดงผลโมเดล 3D ที่รวมไว้ในระบบตามสั่ง -->
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl text-center">
+                <h2 class="text-lg font-bold text-white mb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i data-lucide="box" class="text-cyan-400 w-5 h-5"></i>
+                        โมเดลจำลอง 3D โครงสร้างตู้เย็น
+                    </span>
+                    <span class="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded">Digital Twin</span>
+                </h2>
+                <!-- พื้นที่สำหรับเปิดไฟล์โมเดล 3D (รองรับฟังก์ชันแยกชิ้นงานและเปิดฝาดูระบบความเย็นในอนาคต) -->
+                <div class="w-full h-60 bg-slate-900 rounded-xl overflow-hidden border border-slate-750 flex items-center justify-center relative">
+                    <model-viewer 
+                        id="fridge-3d-model"
+                        src="fridge_model.glb" 
+                        alt="Smart Fridge 3D Assembly Model" 
+                        auto-rotate 
+                        camera-controls 
+                        shadow-intensity="1"
+                        style="width: 100%; height: 100%; background-color: #0f172a;">
+                    </model-viewer>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2">💡 เมื่ออัปโหลดไฟล์ .glb แล้ว จะสามารถปัดเมาส์หมุนดูโครงสร้างกล่องรอบตัว 360° ได้ที่นี่</p>
+            </div>
+        </div>
+
+        <!-- ฝั่งขวา: กราฟ แผนที่ และ Log ระบบ -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- [NEW] ส่วนของกราฟอุณหภูมิเปรียบเทียบ ก่อน vs หลัง (กล่องของเรา vs กระเป๋าโฟมเดิม) -->
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                    <i data-lucide="activity" class="text-cyan-400 w-5 h-5"></i>
+                    กราฟเปรียบเทียบประสิทธิภาพรักษาอุณหภูมิ (Value Proposition Monitor)
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">เปรียบเทียบให้เห็นความต่าง: กล่องอัจฉริยะระบบปิดนิ่งในเกณฑ์ ปะทะ กระเป๋าโฟมแบบเดิมที่อุณหภูมิหลุดลอย</p>
+                <div class="h-64 relative w-full">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+
+            <!-- ส่วนของแผนที่จำลอง GPS และหมุดวิ่งพร้อมแลนด์มาร์กเส้นทาง -->
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                    <i data-lucide="navigation" class="text-cyan-400 w-5 h-5"></i>
+                    ระบบติดตามพิกัดดาวเทียมเคลื่อนที่ (GPS Asset Tracking)
+                </h2>
+                <div class="relative w-full h-44 bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    
+                    <!-- เส้นทางเดินรถหลัก -->
+                    <div class="absolute h-1 bg-slate-700 top-1/2 left-0 right-0 transform -translate-y-1/2"></div>
+                    
+                    <!-- [NEW] จุดแลนด์มาร์กสำคัญระหว่างทางสำหรับพรีเซนต์เนื้อเรื่อง -->
+                    <div class="absolute left-4 top-4 text-[10px] text-slate-500 font-mono flex items-center gap-1">📍 <span class="text-cyan-400 font-bold">KMUTT (ต้นทาง)</span></div>
+                    <div class="absolute left-1/4 bottom-4 text-[10px] text-slate-500 font-mono flex items-center gap-1">🏫 <span>โรงเรียนมัธยมใกล้เคียง</span></div>
+                    <div class="absolute left-2/3 top-4 text-[10px] text-slate-500 font-mono flex items-center gap-1">🏥 <span class="text-rose-400">โรงพยาบาลชุมชน (จุดเน็ตอับสัญญาณ)</span></div>
+                    <div class="absolute right-4 bottom-4 text-[10px] text-slate-500 font-mono flex items-center gap-1">🏁 <span class="text-emerald-400 font-bold">ศูนย์กระจายสินค้ายาปลายทาง</span></div>
+                    
+                    <!-- ขอบเขตรัศมีภัย Geofencing -->
+                    <div id="geofence-ring" class="hidden absolute w-24 h-24 border-2 border-dashed border-rose-500/40 bg-rose-500/5 rounded-full left-1/4 top-1/4 animate-pulse">
+                        <span class="absolute -top-5 left-0 text-[9px] text-rose-400 font-bold uppercase tracking-wider">Geofence Zone</span>
+                    </div>
+
+                    <!-- หมุดมอเตอร์ไซค์ -->
+                    <div id="gps-bike" class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1/2 transition-all duration-1000 ease-linear flex flex-col items-center">
+                        <div class="bg-cyan-500 text-slate-900 p-1.5 rounded-full shadow-lg border border-white animate-bounce">
+                            <i data-lucide="bike" class="w-4 h-4"></i>
+                        </div>
+                        <span id="bike-landmark" class="text-[9px] bg-slate-800 px-1 rounded text-cyan-300 mt-1 font-mono shadow border border-slate-700">จุดสตาร์ท มจธ.</span>
+                    </div>
+                </div>
+                <div class="mt-3 flex justify-between text-xs text-slate-400 font-mono">
+                    <span id="gps-coords">พิกัดปัจจุบัน: กำลังตั้งค่าระบบ...</span>
+                    <span id="gps-status" class="text-cyan-400">กำลังเดินทาง...</span>
+                </div>
+            </div>
+
+            <!-- ส่วนของ Local Log สำรองข้อมูลในกล่อง -->
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="database" class="text-cyan-400 w-5 h-5"></i>
+                        ประวัติบันทึกข้อมูลในกล่องควบคุม (Local EEPROM Log)
+                    </h2>
+                    <span id="log-storage-badge" class="text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">EEPROM Used: 0 Bytes</span>
+                </div>
+                <div class="overflow-x-auto max-h-40 overflow-y-auto border border-slate-750 rounded-xl">
+                    <table class="w-full text-left text-xs text-slate-300 font-mono">
+                        <thead class="bg-slate-850 text-slate-400 sticky top-0 uppercase border-b border-slate-700">
+                            <tr>
+                                <th class="p-2.5">เวลาแสตมป์</th>
+                                <th class="p-2.5">กล่องเรา (°C)</th>
+                                <th class="p-2.5">สถานะคอยล์เย็น</th>
+                                <th class="p-2.5">สถานะคลาวด์</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- แจ้งเตือน Pop-up LINE Notify จำลอง เด้งขึ้นบนจอ -->
+    <div id="line-popup" class="fixed bottom-6 right-6 max-w-sm w-full bg-slate-900 border-l-4 border-rose-500 rounded-xl shadow-2xl p-4 transform translate-y-32 opacity-0 transition-all duration-500 z-50 flex gap-3 items-start">
+        <div class="bg-emerald-600 p-2 rounded-xl text-white">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-1">
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-sm text-emerald-400">LINE Notify</span>
+                <span class="text-[10px] text-slate-500">เมื่อครู่นี้</span>
+            </div>
+            <p class="text-xs text-slate-200 mt-1 font-semibold">🚨 แจ้งเตือนจากระบบควบคุม Smart Fridge!</p>
+            <p id="line-popup-msg" class="text-xs text-slate-400 mt-0.5">พิกัดหรือค่าระบบมีความผิดปกติเกิดขึ้น</p>
+        </div>
+        <button onclick="closeLinePopup()" class="text-slate-500 hover:text-slate-300">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+
+    <!-- สคริปต์ขับเคลื่อนการทำงานจำลองระบบ -->
+    <script>
+        lucide.createIcons();
+
+        // ตัวแปรควบคุมระบบพื้นฐาน
+        let productMode = 'vaccine'; // vaccine หรือ medicine
+        let currentScenario = 'normal'; 
+        let isOnline = true;
+        let isLocked = true;
+        let isGeofenceActive = false;
+        let currentTemp = 4.5;
+        let bikeProgress = 0;
+        let localLogCount = 0;
+        let isAutoPlaying = false;
+
+        // ขีดจำกัดเป้าหมายอุณหภูมิของแต่ละโหมด
+        let targetTempMin = 2;
+        let targetTempMax = 8;
+        let baseNormalTemp = 4.5;
+
+        // ข้อมูลพิกัดและเส้นทาง
+        const startLat = 13.6515, startLng = 100.4963;
+        const endLat = 13.7000, endLng = 100.5500;
+
+        // ตั้งค่ากราฟ Chart.js เปรียบเทียบ ก่อน vs หลัง (กล่องเรา vs กระเป๋าโฟมเดิม)
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        const labels = Array.from({length: 15}, (_, i) => `${i+1}m ago`).reverse();
+        
+        // ข้อมูลเริ่มต้นสำหรับทั้งสองเส้น
+        const ourBoxData = [4.5, 4.4, 4.5, 4.6, 4.5, 4.4, 4.5, 4.5, 4.4, 4.6, 4.5, 4.4, 4.5, 4.6, 4.5];
+        const foamBagData = [5.5, 6.2, 6.8, 7.4, 8.1, 8.9, 9.5, 10.2, 11.0, 11.7, 12.3, 13.0, 13.5, 14.2, 14.8];
+
+        const tempChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '📦 กล่องอัจฉริยะระบบปิดของเรา (เสถียรคงที่)',
+                        data: ourBoxData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.2
+                    },
+                    {
+                        label: '❌ กระเป๋าโฟมแช่เย็นแบบเดิม (อุณหภูมิหลุดเกณฑ์เสียหาย)',
+                        data: foamBagData,
+                        borderColor: '#f43f5e',
+                        borderDash: [6, 4], // ลายเส้นประแสดงจุดเสียหาย
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0,
+                        max: 32,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // ฟังก์ชันเปลี่ยนโหมดสินค้าตามคำสั่ง (วัคซีน vs ยาทั่วไป 25 องศา +-2)
+        function setProductMode(mode) {
+            if (isAutoPlaying) return; // ล็อกปุ่มถ้าระบบกำลังเล่น Auto-play อยู่
+            productMode = mode;
+            
+            const btnVaccine = document.getElementById('btn-mode-vaccine');
+            const btnMedicine = document.getElementById('btn-mode-medicine');
+            const txtNormalTitle = document.getElementById('txt-scen-normal-title');
+            const txtNormalDesc = document.getElementById('txt-scen-normal-desc');
+
+            if (mode === 'vaccine') {
+                targetTempMin = 2; targetTempMax = 8; baseNormalTemp = 4.5;
+                btnVaccine.className = "py-2 px-3 text-xs font-bold rounded-lg border border-cyan-500 bg-cyan-500/10 text-cyan-300 transition";
+                btnMedicine.className = "py-2 px-3 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-400 transition hover:border-slate-500";
+                txtNormalTitle.innerText = "1. สภาวะปกติ (2-8°C)";
+                txtNormalDesc.innerText = "ควบคุมความเย็นเสถียร ของปลอดภัย";
+            } else {
+                targetTempMin = 23; targetTempMax = 27; baseNormalTemp = 25.0;
+                btnVaccine.className = "py-2 px-3 text-xs font-bold rounded-lg border border-slate-700 bg-slate-800 text-slate-400 transition hover:border-slate-500";
+                btnMedicine.className = "py-2 px-3 text-xs font-bold rounded-lg border border-cyan-500 bg-cyan-500/10 text-cyan-300 transition";
+                txtNormalTitle.innerText = "1. สภาวะปกติ (25°C ±2)";
+                txtNormalDesc.innerText = "ควบคุมอุณหภูมิห้องส่งยาทั่วไปคงที่";
+            }
+            setScenario('normal');
+        }
+
+        // ระบบตรวจเช็คและทำงานวนลูปอัตโนมัติของตัวเซนเซอร์และค่ากราฟ (รันทุก 2 วินาที)
+        setInterval(() => {
+            if (isAutoPlaying) return; // หากรันโหมด Story อัตโนมัติอยู่ ให้ข้ามลูปปกติไป
+
+            // คำนวณความผันผวนอุณหภูมิกล่องเรา
+            if (currentScenario === 'normal') {
+                currentTemp = +(baseNormalTemp + (Math.random() * 0.6 - 0.3)).toFixed(1);
+            } else if (currentScenario === 'warning') {
+                let step = productMode === 'vaccine' ? 0.4 : 0.6;
+                currentTemp = +(currentTemp + step).toFixed(1);
+            } else if (currentScenario === 'critical') {
+                let step = productMode === 'vaccine' ? 0.8 : 1.2;
+                currentTemp = +(currentTemp + step).toFixed(1);
+            }
+
+            // คำนวณความผันผวนของกระเป๋าโฟมเดิม (จำลองความร้อนไหลเข้าเรื่อย ๆ)
+            let lastFoamTemp = tempChart.data.datasets[1].data[tempChart.data.datasets[1].data.length - 1];
+            let nextFoamTemp = +(lastFoamTemp + (Math.random() * 0.4 + 0.1)).toFixed(1);
+            if (nextFoamTemp > 30) nextFoamTemp = 30;
+
+            updateSystemUI(currentTemp, nextFoamTemp);
+            
+            // ขยับพิกัดรถปกติ
+            bikeProgress = (bikeProgress + 2) % 100;
+            updateGPSLocation(bikeProgress);
+
+        }, 2000);
+
+        // ฟังก์ชันหลักในการอัปเดตหน้าตา UI และตัวแปรระบบ
+        function updateSystemUI(ourTemp, foamTemp) {
+            document.getElementById('temp-display').innerText = `${ourTemp}°C`;
+            
+            // ดึง Element ตกแต่งการเตือน
+            const cardEl = document.getElementById('status-card');
+            const badgeEl = document.getElementById('status-badge');
+            const tempEl = document.getElementById('temp-display');
+
+            // เงื่อนไขสลับสีแจ้งเตือนและยิง Pop-up ตามระดับอุณหภูมิของแต่ละโหมดสินค้า
+            let isCritical = (productMode === 'vaccine' && ourTemp >= 12.0) || (productMode === 'medicine' && ourTemp >= 29.0);
+            let isWarning = (productMode === 'vaccine' && ourTemp >= 7.0) || (productMode === 'medicine' && ourTemp >= 27.2);
+
+            if (isCritical) {
+                tempEl.className = "text-5xl font-extrabold my-2 text-rose-500 animate-bounce";
+                cardEl.className = "bg-gradient-to-br from-slate-800 to-rose-950/40 p-6 rounded-2xl border border-rose-500/50 shadow-xl text-center";
+                badgeEl.className = "inline-block bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-full text-xs font-bold";
+                badgeEl.innerText = "CRITICAL: SYSTEM CRISIS FAILURE";
+                triggerLineNotification(`🚨 [วิกฤตความร้อน!] ระบบทำความเย็นล้มเหลว ค่าปัจจุบันแตะ: ${ourTemp}°C สินค้าเสี่ยงเสียหายรุนแรง!`);
+            } else if (isWarning) {
+                tempEl.className = "text-5xl font-extrabold my-2 text-amber-500";
+                cardEl.className = "bg-gradient-to-br from-slate-800 to-amber-950/30 p-6 rounded-2xl border border-amber-500/50 shadow-xl text-center";
+                badgeEl.className = "inline-block bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold";
+                badgeEl.innerText = "EARLY-WARNING: TEMPERATURE LIMIT";
+                triggerLineNotification(`⚠️ [แจ้งเตือนล่วงหน้า] ตรวจพบการขยับใกล้ขีดจำกัดสูงสุด: ${ourTemp}°C ระบบเตรียมชดเชยกำลังไฟสำรอง`);
+            } else {
+                tempEl.className = "text-5xl font-extrabold my-2 text-emerald-400";
+                cardEl.className = "bg-gradient-to-br from-slate-800 to-slate-850 p-6 rounded-2xl border border-slate-700 shadow-xl text-center";
+                badgeEl.className = "inline-block bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-bold";
+                badgeEl.innerText = "SYSTEM STATUS: NORMAL";
+            }
+
+            // ผลักจุดข้อมูลใหม่เข้ากราฟเปรียบเทียบทั้งคู่
+            tempChart.data.datasets[0].data.shift();
+            tempChart.data.datasets[0].data.push(ourTemp);
+
+            tempChart.data.datasets[1].data.shift();
+            tempChart.data.datasets[1].data.push(foamTemp);
+            
+            tempChart.update();
+            addLocalLog(ourTemp);
+        }
+
+        // ฟังก์ชันคำนวณตำแหน่งพิกัดและบอกตำแหน่งแลนด์มาร์กระหว่างขับขี่
+        function updateGPSLocation(progress) {
+            const bikeEl = document.getElementById('gps-bike');
+            const landmarkEl = document.getElementById('bike-landmark');
+            bikeEl.style.left = `${progress}%`;
+            
+            const currentLat = +(startLat + (endLat - startLat) * (progress / 100)).toFixed(4);
+            const currentLng = +(startLng + (endLng - startLng) * (progress / 100)).toFixed(4);
+            document.getElementById('gps-coords').innerText = `พิกัดปัจจุบัน: ${currentLat}, ${currentLng}`;
+
+            if (progress < 15) {
+                landmarkEl.innerText = "จุดสตาร์ท มจธ.";
+            } else if (progress >= 20 && progress < 45) {
+                landmarkEl.innerText = "🏫 ผ่านโรงเรียนมัธยม";
+            } else if (progress >= 50 && progress < 75) {
+                landmarkEl.innerText = "🏥 เขตโรงพยาบาลชุมชน";
+            } else if (progress >= 90) {
+                landmarkEl.innerText = "🏁 ศูนย์กระจายสินค้าปลายทาง";
+            }
+        }
+
+        // [NEW] ฟังก์ชันกดปุ่มเดียวลุย Story อัตโนมัติ (Demo Mode / Auto-play ~40 วินาที)
+        function startAutoPlay() {
+            if (isAutoPlaying) return;
+            isAutoPlaying = true;
+            
+            const btn = document.getElementById('btn-autoplay');
+            const statusText = document.getElementById('autoplay-status');
+            
+            btn.disabled = true;
+            btn.className = "w-full bg-slate-700 text-slate-400 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 cursor-not-allowed";
+            statusText.classList.remove('hidden');
+
+            // เซ็ตโหมดสินค้าหลักไปที่วัคซีนเพื่อโชว์เคสที่ท้าทายที่สุด
+            productMode = 'vaccine';
+            targetTempMin = 2; targetTempMax = 8; baseNormalTemp = 4.5;
+            
+            // ล้างข้อมูลกราฟชั่วคราวเพื่อให้สอดคล้องกับ Story สดบนเวที
+            tempChart.data.datasets[0].data = [4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5];
+            tempChart.data.datasets[1].data = [4.5, 5.0, 5.8, 6.5, 7.2, 8.5, 9.8, 11.2, 12.5, 14.0, 15.5, 17.0, 18.5, 20.0, 22.0];
+
+            let timeline = [
+                { time: 0, progress: 0, temp: 4.5, foam: 4.5, scen: 'normal', msg: "🎬 สเต็ป 1/6: สแกนล็อกตู้รับของเข้าระบบ ณ มจธ. [สถานะปลอดภัย]", lock: true, net: true, geo: false },
+                { time: 6000, progress: 25, temp: 4.6, foam: 7.5, scen: 'normal', msg: "🚚 สเต็ป 2/6: รถเคลื่อนผ่านโซนโรงเรียน อุณหภูมิฝั่งกล่องเรายังนิ่งสนิท", lock: true, net: true, geo: true },
+                { time: 13000, progress: 45, temp: 7.2, foam: 12.4, scen: 'warning', msg: "⚠️ สเต็ป 3/6: ขับรถเจอแดดจัด อุณหภูมิขยับแตะ 7.2°C ระบบส่ง Early-Warning เตือนอัตโนมัติ!", lock: true, net: true, geo: true },
+                { time: 20000, progress: 60, temp: 5.1, foam: 16.8, scen: 'normal', msg: "📡 สเต็ป 4/6: วิ่งเข้าเขตอับสัญญาณข้างโรงพยาบาล [เน็ตหลุด! โค้ดเปิดโหมดเซฟลง EEPROM ในกล่องทันที]", lock: true, net: false, geo: true },
+                { time: 28000, progress: 85, temp: 4.4, foam: 21.2, scen: 'normal', msg: "🌐 สเต็ป 5/6: กลับมาออนไลน์ ดึงข้อมูลจากกล่องซิงค์ขึ้น Cloud สำเร็จอย่างปลอดภัย", lock: true, net: true, geo: true },
+                { time: 35000, progress: 98, temp: 4.5, foam: 24.5, scen: 'normal', msg: "🏁 สเต็ป 6/6: ถึงปลายทางอย่างปลอดภัย สแกนคิวอาร์โค้ดปลดล็อกประตู้ตู้เย็นและปิดโปรเจกต์!", lock: false, net: true, geo: false }
+            ];
+
+            timeline.forEach((step) => {
+                setTimeout(() => {
+                    statusText.innerText = step.msg;
+                    currentScenario = step.scen;
+                    isOnline = step.net;
+                    isLocked = step.lock;
+                    isGeofenceActive = step.geo;
+                    
+                    // อัปเดต UI เครือข่ายและระบบล็อก
+                    document.getElementById('net-status-text').innerText = isOnline ? "Network: Online" : "Network: Offline (บันทึกข้อมูลเข้ากล่อง)";
+                    document.getElementById('net-status-text').className = isOnline ? "font-medium text-emerald-400" : "font-medium text-rose-400";
+                    document.getElementById('net-status-dot').className = isOnline ? "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" : "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 animate-pulse";
+                    document.getElementById('qr-text').innerText = isLocked ? "🔒 สแกน QR ปลดล็อกตู้" : "🔓 ตู้ปลดล็อกแล้ว";
+                    
+                    updateGPSLocation(step.progress);
+                    updateSystemUI(step.temp, step.foam);
+                }, step.time);
+            });
+
+            // ปิดโหมดจำลองเมื่อครบกำหนดเวลา
+            setTimeout(() => {
+                isAutoPlaying = false;
+                btn.disabled = false;
+                btn.className = "w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-cyan-600/20";
+                statusText.classList.add('hidden');
+                alert("🎉 การพรีเซนต์จำลองตามสถานการณ์ 40 วินาทีเสร็จสมบูรณ์เรียบร้อย!");
+            }, 41000);
+        }
+
+        // ฟังก์ชันเลือกเปลี่ยนสถานการณ์การทำความเย็นแบบแมนนวล
+        function setScenario(type) {
+            if (isAutoPlaying) return; 
+            currentScenario = type;
+            document.getElementById('btn-scen-normal').className = "w-full text-left bg-slate-850 border border-slate-700 p-3 rounded-xl transition flex items-center justify-between group";
+            document.getElementById('btn-scen-warning').className = "w-full text-left bg-slate-850 border border-slate-700 p-3 rounded-xl transition flex items-center justify-between group";
+            document.getElementById('btn-scen-critical').className = "w-full text-left bg-slate-850 border border-slate-700 p-3 rounded-xl transition flex items-center justify-between group";
+            
+            if (type === 'normal') {
+                currentTemp = baseNormalTemp;
+                document.getElementById('btn-scen-normal').className = "w-full text-left bg-emerald-600/20 border border-emerald-500 p-3 rounded-xl transition flex items-center justify-between group";
+            } else if (type === 'warning') {
+                document.getElementById('btn-scen-warning').className = "w-full text-left bg-amber-600/20 border border-amber-500 p-3 rounded-xl transition flex items-center justify-between group";
+            } else if (type === 'critical') {
+                document.getElementById('btn-scen-critical').className = "w-full text-left bg-rose-600/20 border border-rose-500 p-3 rounded-xl transition flex items-center justify-between group";
+            }
+        }
+
+        function toggleNetwork() {
+            if (isAutoPlaying) return;
+            isOnline = !isOnline;
+            document.getElementById('net-status-dot').className = isOnline ? "relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" : "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 animate-pulse";
+            document.getElementById('net-status-text').innerText = isOnline ? "Network: Online" : "Network: Offline (บันทึกข้อมูลเข้ากล่อง)";
+            document.getElementById('net-status-text').className = isOnline ? "font-medium text-emerald-400" : "font-medium text-rose-400";
+        }
+
+        function simulateQRUnlock() {
+            if (isAutoPlaying) return;
+            isLocked = !isLocked;
+            document.getElementById('qr-text').innerText = isLocked ? "🔒 สแกน QR ปลดล็อกตู้" : "🔓 ตู้ปลดล็อกแล้ว";
+            if(!isLocked) alert("ปลดล็อกสำเร็จ: อนุญาตให้เข้าถึงเนื้อหาภายในตู้ได้");
+        }
+
+        function toggleGeofence() {
+            if (isAutoPlaying) return;
+            isGeofenceActive = !isGeofenceActive;
+            const btn = document.getElementById('btn-geofence');
+            const ring = document.getElementById('geofence-ring');
+            
+            if (isGeofenceActive) {
+                btn.className = "bg-rose-900 border border-rose-500 p-2.5 rounded-xl text-xs flex flex-col items-center gap-1.5 transition";
+                document.getElementById('geo-text').innerText = "เปิดระบบอยู่ (เฝ้าระวัง)";
+                ring.classList.remove('hidden');
+            } else {
+                btn.className = "bg-slate-700 hover:bg-slate-600 p-2.5 rounded-xl text-xs flex flex-col items-center gap-1.5 transition";
+                document.getElementById('geo-text').innerText = "เปิดระบบ Geofencing";
+                ring.classList.add('hidden');
+            }
+        }
+
+        function addLocalLog(temp) {
+            localLogCount++;
+            const body = document.getElementById('log-table-body');
+            const now = new Date().toLocaleTimeString();
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-slate-750 hover:bg-slate-800/50 transition";
+            
+            document.getElementById('log-storage-badge').innerText = `EEPROM Used: ${localLogCount * 16} Bytes`;
+            tr.innerHTML = `
+                <td class="p-2.5 text-slate-400">${now}</td>
+                <td class="p-2.5 font-bold text-emerald-400">${temp}°C</td>
+                <td class="p-2.5 text-slate-300">COMPRESSOR ACTIVE</td>
+                <td class="p-2.5">${isOnline ? '<span class="text-emerald-400">SYNCED</span>' : '<span class="text-amber-400 font-bold">LOCAL SAVED</span>'}</td>
+            `;
+            if (body.firstChild) body.insertBefore(tr, body.firstChild);
+            else body.appendChild(tr);
+            if (body.children.length > 15) body.removeChild(body.lastChild);
+        }
+
+        let lastNotifyTime = 0;
+        function triggerLineNotification(msg) {
+            const now = Date.now();
+            if (now - lastNotifyTime < 7000) return;
+            lastNotifyTime = now;
+            if (!isOnline) return; 
+
+            const popup = document.getElementById('line-popup');
+            document.getElementById('line-popup-msg').innerText = msg;
+            popup.classList.remove('translate-y-32', 'opacity-0');
+            setTimeout(() => { closeLinePopup(); }, 4500);
+        }
+
+        function closeLinePopup() {
+            const popup = document.getElementById('line-popup');
+            popup.classList.add('translate-y-32', 'opacity-0');
+        }
+    </script>
+</body>
+</html>
